@@ -1,0 +1,340 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Authorization
+@using Services.Posts
+@using OPC5_Blogapp.Data.Models
+@using OPC5_Blogapp.Components.PageComponents;
+@inject IPostService postService;
+@inject ICommentService commentService;
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject NavigationManager Navigate
+@rendermode InteractiveServer
+
+<PageTitle>Home</PageTitle>
+
+<!--@if (username != null)
+{
+    <button @onclick="Logout" class="btn btn-primary" style="float: left;">Logout</button>
+    <p style="margin-left: 4%; margin-top: 0.4%;">Logged in as <span @onclick='() => Navigate.NavigateTo("/profile")' class="hover-span" style="color: white;">@username</span></p>
+}
+else
+{
+    <button @onclick='() => Navigate.NavigateTo("/login")' class="btn btn-primary" style="float: left;">Login</button>
+    <p style="margin-left: 3%; margin-top: 0.4%;">Not logged in</p>
+}-->
+
+<div class="dashboard">
+    <ButtonComponent />
+
+    <div class="dashboard-container">
+        <!--Loop posts and display them one by one-->
+        @if (DisplayedPosts == null)
+        {
+            <p>Loading posts...</p>
+        }
+        else
+        {
+            <PostComponent ReloadPosts="@LoadPosts" />
+            @foreach (var post in DisplayedPosts)
+            {
+                <div class="dashboard-post" id="@post.PostId">
+                    <div class="username">
+                        <span>
+                            @post.User.Username <span style="color: #424242;">
+                                &#64;@post.User.Username
+                            </span>
+                        </span>
+                    </div>
+
+                    <div class="post">
+                        <p style="margin-left: 5px; max-height: 500px; overflow: hidden;">@post.PostData</p>
+                    </div>
+
+                    <div class="tags-container">
+                        @foreach (var tag in post.PostTags)
+                        {
+                            <span class="badge tag" style="background-color: #1C6EC2;">@tag.TagName</span>
+                        }
+                    </div>
+
+                    <!-- Line to separate post and comment component -->
+                    <hr style="width: 95%; border-top: 1px solid #ccc; margin: 10px auto;" />
+
+                    <div class="footer">
+                        <i @onclick="() => ToggleCommentField(post.PostId)" class="far fa-comment icon-comment" style="cursor: pointer;"><span style="margin-left: 5px;">@post.PostComments.Count</span></i>
+                        <i @onclick="() => UpvotePost(post)" class="far fa-thumbs-up icon-thumbsup"><span style="margin-left: 5px;">@post.PostUpvotes</span></i>
+                        <i @onclick="() => DownvotePost(post)" class="far fa-thumbs-down icon-thumbsdown"><span style="margin-left: 5px;">@post.PostDownvotes</span></i>
+                    </div>
+
+                    @if (IsCommentFieldVisible(post.PostId))
+                    {
+                        <!-- Improved styling for comment component -->
+                        <div class="comment-container">
+                            <CommentComponent PostId="@post.PostId" ReloadPosts="@LoadPosts" />
+                        </div>
+                    }
+
+                </div>
+            }
+
+            @if (RemainingPostsCount > 0)
+            {
+                <button style="margin-top: 2.5%; border-radius: 20px;" class="btn btn-primary" @onclick="LoadMorePosts">Ladda Fler</button>
+            }
+        }
+        <!--Loop posts and display them one by one-->
+    </div>
+
+    <SearchComponent />
+</div>
+
+<style>
+    body {
+        background-color: black;
+        padding-top: 0px;
+    }
+
+    .content {
+        padding-top: 0px;
+    }
+
+    .dashboard {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .dashboard-container {
+        border-radius: 5px;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 30%;
+    }
+
+    .dashboard-post {
+        font-family: Poppins;
+        border: solid 0.5px grey;
+        border-top: none;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+    }
+
+    .dashboard-post:last-child {
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
+    }
+
+    .dashboard-post:hover {
+        background-color: #212121;
+    }
+
+    .dashboard-post .username {
+        margin: 1%;
+        align-self: flex-start;
+        font-weight: bolder;
+    }
+
+    .dashboard-post .post {
+        overflow-wrap: break-word;
+        margin-left: 5%;
+        margin-right: 5%;
+        width: 85%;
+        align-self: flex-end;
+    }
+
+    .dashboard-post .footer {
+        display: flex;
+        justify-content: space-around;
+        align-self: center;
+        margin-top: 10px;
+        font-size: 20px;
+    }
+
+    .dashboard-post .footer i {
+        margin-right: 50px;
+        margin-bottom: 10px;
+    }
+
+    .dashboard-post .footer .icon-comment:hover {
+        color: #1C6EC2;
+        cursor: pointer;
+    }
+
+    .dashboard-post .footer .icon-thumbsup:hover {
+        color: lime;
+        cursor: pointer;
+    }
+
+    .dashboard-post .footer .icon-thumbsdown:hover {
+        color: red;
+        cursor: pointer;
+    }
+
+    .tags-container {
+        width: 85%;
+        display: flex; /* Use flexbox layout */
+        flex-wrap: wrap; /* Allow items to wrap onto multiple lines */
+    }
+
+    .tags-container .tag {
+        margin-right: 1%;
+    }
+
+    .hover-span:hover {
+        cursor: pointer;
+    }
+
+    .comment-container {
+        width: 95%;
+        margin: 10px auto;
+    }
+
+    .comment {
+        background-color: #f5f8fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        font-size: 16px;
+        background-color: black;
+        color: white;
+        border: 1px solid #ccc;
+        padding-left: 10px;
+    }
+
+    .user {
+        font-weight: bold;
+        color: #1da1f2;
+        margin-bottom: 4px;
+    }
+
+    .text {
+        white-space: pre-wrap;
+    }
+</style>
+
+@code {
+    private List<Post> AllPosts = new List<Post>();
+    private List<Post> DisplayedPosts = new List<Post>();
+    private List<int> postsWithCommentsToggled = new List<int>();
+    private int DisplayedPostsCount = 10;
+    private int TotalPostsCount = 0;
+    private bool ShowCommentField = false;
+    private int commentsCount = 0;
+
+    private string? errorMessage;
+
+    private string? username;
+
+    private void UpdateDisplayedPosts()
+    {
+        DisplayedPosts = AllPosts.Take(DisplayedPostsCount).ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPosts();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            User? user = await sessionStorage.GetItemAsync<User>("userData");
+
+            if (user != null)
+            {
+                username = user.Username;
+            }
+        }
+    }
+
+    private async void Logout()
+    {
+        User? user = await sessionStorage.GetItemAsync<User>("userData");
+
+        if (user != null)
+        {
+            await sessionStorage.RemoveItemAsync("userData");
+            username = null;
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPosts()
+    {
+        AllPosts = await postService.GetPosts(DisplayedPostsCount);
+        UpdateDisplayedPosts();
+
+        TotalPostsCount = await postService.GetTotalPostCount();
+    }
+
+    private async Task LoadMorePosts()
+    {
+        if (RemainingPostsCount < 5)
+        {
+            DisplayedPostsCount += RemainingPostsCount;
+        }
+        else
+        {
+            DisplayedPostsCount += 5;
+        }
+
+        await LoadPosts();
+    }
+
+    private int RemainingPostsCount => TotalPostsCount - DisplayedPosts.Count;
+
+    private async void UpvotePost(Post post)
+    {
+        User? user = await sessionStorage.GetItemAsync<User>("userData");
+
+        if (user != null)
+        {
+            await Task.Run(() => postService.AddPostUpvote(post.PostId));
+            StateHasChanged();
+        }
+        else
+        {
+            Navigate.NavigateTo("/login");
+        }
+    }
+
+    private async void DownvotePost(Post post)
+    {
+        User? user = await sessionStorage.GetItemAsync<User>("userData");
+
+        if (user != null)
+        {
+            await Task.Run(() => postService.AddPostDownvote(post.PostId));
+            StateHasChanged();
+        }
+        else
+        {
+            Navigate.NavigateTo("/login");
+        }
+    }
+
+    private void ToggleCommentField(int postId)
+    {
+        if (postsWithCommentsToggled.Contains(postId))
+        {
+            postsWithCommentsToggled.Remove(postId);
+        }
+        else
+        {
+            postsWithCommentsToggled.Add(postId);
+        }
+    }
+
+    private bool IsCommentFieldVisible(int postId)
+    {
+        return postsWithCommentsToggled.Contains(postId);
+    }
+}

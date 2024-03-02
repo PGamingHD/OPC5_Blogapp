@@ -1,0 +1,121 @@
+﻿@page "/Login"
+@using Services.Users;
+@using Data.Models;
+@using Konscious.Security.Cryptography;
+@using System.Text;
+@inject IUserService userService
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject NavigationManager Navigate
+@rendermode InteractiveServer
+
+<PageTitle>Login</PageTitle>
+
+<div class="login-container">
+    <h3>Login Page</h3>
+
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+
+    <form @onsubmit="PerformLogin">
+        <div class="form-group">
+            <label for="usernameInput">Username</label>
+            <input type="text" @bind="username" class="form-control" id="usernameInput" aria-describedby="usernameHelp" placeholder="Enter Username" />
+            <small id="usernameHelp" class="form-text text-muted">We'll never share this data with anyone.</small>
+        </div>
+        <div class="form-group">
+            <label for="passwordInput">Password</label>
+            <input type="password" @bind="password" class="form-control" autocomplete="on" id="passwordInput" aria-describedby="passwordHelp" placeholder="Enter Password" />
+            <small id="passwordHelp" class="form-text text-muted">We'll never share this data with anyone.</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+        <div style="margin-top: 5%;" class="form-group">
+            <label>Do you not have an account? <a href="/register">Register here</a></label>
+        </div>
+    </form>
+</div>
+
+<style>
+    body {
+        background-color: black;
+    }
+
+    .login-container {
+        border-radius: 5px;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        /*border: solid 1px white;*/ /*DEBUG*/
+    }
+</style>
+
+
+@code {
+    private string username;
+    private string password;
+    private string errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            User? user = await sessionStorage.GetItemAsync<User>("userData");
+
+            if (user != null)
+            {
+                Navigate.NavigateTo("/");
+            }
+        }
+    }
+
+    private async void PerformLogin()
+    {
+        User? user = userService.GetUserByUsername(username);
+
+        if (user != null)
+        {
+            if (VerifyPassword(user.Hashed, password))
+            {
+                await sessionStorage.SetItemAsync("userData", new User() { UserId = user.UserId, Username = user.Username, Email = user.Email, Hashed = user.Hashed });
+
+                Navigate.NavigateTo("/");
+            } else
+            {
+                errorMessage = "Account login failed";
+            }
+        } else
+        {
+            errorMessage = "Account login failed";
+        }
+    }
+
+    private static bool VerifyPassword(string hashedPassword, string password)
+    {
+        byte[] hash = Convert.FromBase64String(hashedPassword);
+
+        var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password))
+            {
+                Salt = Encoding.UTF8.GetBytes("YourSer123.123@21!3.123123@3123123!##21321321@21i21522199omgkmkmv21231.2312312!#23@2131.23123i1ijgi2382t91aslfsplgasda"),
+                DegreeOfParallelism = 8,
+                Iterations = 4,
+                MemorySize = 1024 * 1024
+            };
+
+        byte[] computedHash = argon2.GetBytes(64);
+
+        return SlowEquals(hash, computedHash);
+    }
+
+    private static bool SlowEquals(byte[] a, byte[] b)
+    {
+        uint diff = (uint)a.Length ^ (uint)b.Length;
+        for (int i = 0; i < a.Length && i < b.Length; i++)
+            diff |= (uint)(a[i] ^ b[i]);
+        return diff == 0;
+    }
+}
