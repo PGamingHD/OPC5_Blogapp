@@ -1,0 +1,36 @@
+﻿<div class="searchbar-container">
+    <input class="searchbar" type="text" placeholder="Sök..." />
+</div>
+
+<style>
+    .searchbar-container {
+        display: flex;
+        flex-direction: column;
+
+        padding-top: 0.2%;
+        margin-right: auto;
+        width: 12.5%;
+        margin-left: 1%;
+    }
+
+    .searchbar {
+        border-radius: 25px;
+        background-color: #15181C;
+        color: white;
+        padding: 10px;
+
+        outline-color: transparent;
+        border-color: transparent;
+    }
+
+    .searchbar:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(13,110,253, 0.75);
+        background-color: black;
+        border: 1px solid black;
+    }
+</style>
+
+@code {
+
+}

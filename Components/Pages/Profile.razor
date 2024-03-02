@@ -1,0 +1,117 @@
+﻿@page "/profile"
+@using OPC5_Blogapp.Data.Models
+@using Services.Users
+@inject IUserService userService
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject NavigationManager Navigate
+@rendermode InteractiveServer
+
+<PageTitle>Profile</PageTitle>
+@if (username != null)
+{
+    <button @onclick="Logout" class="btn btn-primary" style="float: left;">Logout</button>
+    <p style="margin-left: 4%; margin-top: 0.4%;">Logged in as <span>@username.Username</span><span @onclick='() => Navigate.NavigateTo("/")' class="hover-span" style="color: white; margin-left: 1%;">Back to Home</span></p>
+}
+@if (username != null)
+{
+    <div class="profileinfo-container">
+        <h3>Profile Page</h3>
+
+        @if (updateMessage != null)
+        {
+            <div class="alert alert-info" role="alert">
+                @updateMessage
+            </div>
+        }
+
+        <form @onsubmit="UpdateProfile">
+            <div class="form-group">
+                <label for="usernameInput">Username</label>
+                <input type="text" class="form-control" @bind="username.Username" id="usernameInput" placeholder="Enter Username" readonly />
+            </div>
+            <div class="form-group">
+                <label for="passwordInput">New Password</label>
+                <input type="password" class="form-control" autocomplete="on" @bind="newPassword" id="passwordInput" placeholder="Enter New Password" required="required" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 5%;">Update Profile</button>
+        </form>
+    </div>
+}
+else
+{
+    <p>Please <a href="/login">login</a> to view this page.</p>
+}
+
+<style>
+    body {
+        background-color: black;
+    }
+
+    .profileinfo-container {
+        border-radius: 5px;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        /*border: solid 1px white;*/ /*DEBUG*/
+    }
+
+    .hover-span:hover {
+        cursor: pointer;
+    }
+    #usernameInput {
+        pointer-events: none;
+        background-color: grey;
+    }
+</style>
+
+@code {
+    private User? username;
+    private string newPassword;
+    private string updateMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            username = await sessionStorage.GetItemAsync<User>("userData");
+            if (username == null)
+            {
+                Navigate.NavigateTo("/login");
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateProfile()
+    {
+        bool success = await userService.UpdateUserPassword(username.Username, newPassword);
+
+        if (success)
+        {
+            updateMessage = "Your profile has been updated successfully.";
+            // TODO: Fixa in någon "tillbaka-till-home-knapp" här kanske?
+
+            username.Hashed = newPassword;
+            await sessionStorage.SetItemAsync("userData", username);
+        }
+        else
+        {
+            updateMessage = "Failed to update your profile.";
+        }
+    }
+    private async void Logout()
+    {
+        User? user = await sessionStorage.GetItemAsync<User>("userData");
+
+        if (user != null)
+        {
+            await sessionStorage.RemoveItemAsync("userData");
+            username = null;
+            Navigate.NavigateTo("/");
+            StateHasChanged();
+        }
+    }
+}
